@@ -1,0 +1,73 @@
+from flask import Flask, request
+
+app = Flask(__name__)
+
+import ssl
+
+
+def client_cert_cb(sock, cert, key):
+    """
+    Callback function that is called when a client certificate is presented
+    during the SSL/TLS handshake.
+
+    :param sock: the socket object
+    :param cert: the client certificate
+    :param key: the client private key
+    :return: True if the certificate is accepted, False otherwise
+    """
+    # Extract information from the certificate
+    subject = cert.get_subject()
+    attributes = dict(subject.get_components())
+    print("Client certificate attributes:", attributes)
+
+    # Return True to accept the certificate
+    return True
+
+
+# Create a context with the client certificate callback
+context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH, cafile=None, capath=None, cadata=None)
+# context.set_cert_cb(client_cert_cb)
+
+'''
+# Start a server socket using the context
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    sock.bind(('localhost', 0))
+    sock.listen()
+
+    # Start a client socket using the context
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_sock:
+        client_sock.connect(sock.getsockname())
+
+        # Wrap the client socket in an SSL/TLS layer
+        client_ssl = context.wrap_socket(client_sock, server_side=False)
+
+        # Wrap the server socket in an SSL/TLS layer
+        with context.wrap_socket(sock, server_side=True) as server_ssl:
+            # Accept the client connection
+            conn, _ = server_ssl.accept()
+
+            # The client certificate information is now available
+            # in the client_cert_cb function
+'''
+
+
+@app.route("/")
+def hello():
+    return "Hello World!\n"
+
+
+@app.route('/cert')
+def get_client_domain():
+    # Check if the client presented a valid SSL certificate
+    print(request.client_cert)
+    if 'X-SSL-CERT' in request.headers:
+        # Extract the domain from the SSL certificate
+        cert_data = request.headers['X-SSL-CERT']
+        domain = cert_data.split("CN=")[1].split("/")[0]
+        return f'The client domain is {domain}'
+    else:
+        return 'No SSL certificate presented by the client'
+
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=8443, debug=False)

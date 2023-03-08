@@ -1,0 +1,15 @@
+FROM python:latest
+RUN mkdir /src
+ADD __init__.py /src
+ADD requirements.txt /src
+RUN pip install -r /src/requirements.txt && pip list
+
+ADD custom_auth_worker.py /src
+ADD gunicorn.conf.py /src
+ADD app.py /src
+ADD start.sh /src
+COPY certs /certs
+WORKDIR /src
+EXPOSE 8080
+#CMD ["./start.sh"]
+CMD ["gunicorn", "--config", "/src/gunicorn.conf.py", "--pythonpath", "/src", "app:app"]
